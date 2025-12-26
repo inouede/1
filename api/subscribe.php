@@ -1,0 +1,90 @@
+<?php
+/**
+ * プッシュ通知サブスクリプション登録API
+ */
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// OPTIONSリクエスト（プリフライト）に対応
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// POSTリクエストのみ受け付け
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
+    exit;
+}
+
+// 設定ファイル読み込み
+$config = require __DIR__ . '/../config.php';
+
+try {
+    // リクエストボディ取得
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data || !isset($data['subscription'])) {
+        throw new Exception('Invalid request data');
+    }
+
+    $subscription = $data['subscription'];
+
+    // サブスクリプションの検証
+    if (!isset($subscription['endpoint']) || !isset($subscription['keys'])) {
+        throw new Exception('Invalid subscription format');
+    }
+
+    // 既存のサブスクリプションを読み込み
+    $subscriptions = [];
+    if (file_exists($config['subscriptions_file'])) {
+        $content = file_get_contents($config['subscriptions_file']);
+        $subscriptions = json_decode($content, true) ?: [];
+    }
+
+    // 重複チェック（同じendpointがある場合は更新）
+    $found = false;
+    foreach ($subscriptions as $key => $sub) {
+        if ($sub['endpoint'] === $subscription['endpoint']) {
+            $subscriptions[$key] = $subscription;
+            $subscriptions[$key]['updated_at'] = date('Y-m-d H:i:s');
+            $found = true;
+            break;
+        }
+    }
+
+    // 新規の場合は追加
+    if (!$found) {
+        $subscription['created_at'] = date('Y-m-d H:i:s');
+        $subscription['updated_at'] = date('Y-m-d H:i:s');
+        $subscriptions[] = $subscription;
+    }
+
+    // ファイルに保存
+    $result = file_put_contents(
+        $config['subscriptions_file'],
+        json_encode($subscriptions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+
+    if ($result === false) {
+        throw new Exception('Failed to save subscription');
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Subscription saved successfully',
+        'total_subscriptions' => count($subscriptions)
+    ]);
+
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+}

@@ -1,0 +1,22 @@
+# Composer（開発用）
+# /vendor/  ← Xサーバーへのアップロードを簡単にするため、vendorはコミットに含めます
+
+# データファイル
+/data/subscriptions.json
+
+# 環境設定（本番用）
+config.local.php
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ
+*.log

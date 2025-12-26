@@ -13,6 +13,15 @@ const messageHistory = document.getElementById('message-history');
 let deferredPrompt;
 let swRegistration = null;
 
+// VAPID公開鍵（config.phpと同じ値）
+const VAPID_PUBLIC_KEY = 'BNF2KP-UyNhY4w7khRCa7G-vkRoHHFOpzklLfnM-VXnjKe3rVt0iyK2WLFJTv3MKf9UNZn-tx5lrGWCPrsKLK0I';
+
+// APIエンドポイント
+const API_ENDPOINTS = {
+  subscribe: './api/subscribe.php',
+  sendPush: './api/send-push.php'
+};
+
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
@@ -76,6 +85,8 @@ function checkNotificationPermission() {
       updateStatus('success', '✅ 通知が許可されています');
       sendBtn.disabled = messageInput.value.length === 0;
       requestPermissionBtn.style.display = 'none';
+      // プッシュサブスクリプションを登録
+      subscribeToPush();
       break;
 
     case 'denied':
@@ -106,6 +117,8 @@ async function requestNotificationPermission() {
 
     if (permission === 'granted') {
       console.log('Notification permission granted');
+      // プッシュサブスクリプションを登録
+      await subscribeToPush();
     }
   } catch (error) {
     console.error('Error requesting notification permission:', error);
@@ -113,7 +126,80 @@ async function requestNotificationPermission() {
   }
 }
 
-// プッシュ通知送信
+// プッシュサブスクリプション登録
+async function subscribeToPush() {
+  if (!swRegistration) {
+    console.error('Service Worker not registered');
+    return;
+  }
+
+  try {
+    // 既存のサブスクリプションを確認
+    let subscription = await swRegistration.pushManager.getSubscription();
+
+    if (!subscription) {
+      // 新規サブスクリプション作成
+      const vapidPublicKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      subscription = await swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidPublicKey
+      });
+
+      console.log('Push subscription created:', subscription);
+    } else {
+      console.log('Push subscription already exists:', subscription);
+    }
+
+    // サーバーに送信
+    await sendSubscriptionToServer(subscription);
+
+  } catch (error) {
+    console.error('Failed to subscribe to push:', error);
+  }
+}
+
+// サブスクリプションをサーバーに送信
+async function sendSubscriptionToServer(subscription) {
+  try {
+    const response = await fetch(API_ENDPOINTS.subscribe, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        subscription: subscription.toJSON()
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      console.log('Subscription saved successfully:', data);
+    } else {
+      console.error('Failed to save subscription:', data.error);
+    }
+  } catch (error) {
+    console.error('Error sending subscription to server:', error);
+  }
+}
+
+// VAPID公開鍵をUint8Arrayに変換
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// プッシュ通知送信（全デバイスに送信）
 async function sendNotification() {
   const message = messageInput.value.trim();
 
@@ -126,46 +212,47 @@ async function sendNotification() {
     return;
   }
 
+  // 送信ボタンを無効化
+  sendBtn.disabled = true;
+  sendBtn.textContent = '送信中...';
+
   try {
-    // Service Workerが利用可能な場合
-    if (swRegistration) {
-      // Service Workerを通じて通知を表示
-      await swRegistration.showNotification('📨 新しいメッセージ', {
-        body: message,
-        icon: './icon-192.png',
-        badge: './icon-192.png',
-        vibrate: [200, 100, 200],
-        tag: 'message-notification',
-        requireInteraction: false,
-        actions: [],
-        data: {
-          dateOfArrival: Date.now(),
-          message: message
-        }
-      });
+    // バックエンドAPIにメッセージを送信
+    const response = await fetch(API_ENDPOINTS.sendPush, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: message
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      console.log('Push notification sent:', data);
+
+      // メッセージ履歴に追加
+      addToHistory(message);
+
+      // 入力フィールドをクリア
+      messageInput.value = '';
+      charCount.textContent = '0';
+
+      // 成功メッセージ表示
+      showToast(`✅ ${data.stats.success}台のデバイスに通知を送信しました！`);
     } else {
-      // フォールバック: 通常の通知
-      new Notification('📨 新しいメッセージ', {
-        body: message,
-        icon: './icon-192.png',
-        vibrate: [200, 100, 200]
-      });
+      throw new Error(data.error || 'Failed to send push notification');
     }
-
-    // メッセージ履歴に追加
-    addToHistory(message);
-
-    // 入力フィールドをクリア
-    messageInput.value = '';
-    charCount.textContent = '0';
-    sendBtn.disabled = true;
-
-    // 成功メッセージ表示
-    showToast('✅ 通知を送信しました！');
 
   } catch (error) {
     console.error('Error sending notification:', error);
-    alert('通知の送信に失敗しました: ' + error.message);
+    showToast('❌ 通知の送信に失敗しました');
+  } finally {
+    // 送信ボタンを有効化
+    sendBtn.disabled = messageInput.value.length === 0;
+    sendBtn.textContent = '送信して通知を受け取る';
   }
 }
 
