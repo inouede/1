@@ -65,11 +65,16 @@
 
 #### 2. パーミッション設定
 
-`data/subscriptions.json` に書き込み権限を付与してください：
+**注意**: `data` ディレクトリと `data/subscriptions.json` ファイルは、初回アクセス時（通知許可時）に自動的に作成されます。
+
+通常は手動でのパーミッション設定は不要ですが、パーミッションエラーが発生する場合は以下を実行してください：
 
 ```bash
-chmod 666 data/subscriptions.json
+# 手動で作成する場合
+mkdir -p data
+echo '[]' > data/subscriptions.json
 chmod 777 data
+chmod 666 data/subscriptions.json
 ```
 
 FTPクライアントの場合は、ファイルのパーミッションを `666`、ディレクトリを `777` に設定してください。

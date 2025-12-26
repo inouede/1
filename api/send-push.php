@@ -30,6 +30,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $config = require __DIR__ . '/../config.php';
 
 try {
+    // dataディレクトリが存在しない場合は作成
+    $dataDir = dirname($config['subscriptions_file']);
+    if (!is_dir($dataDir)) {
+        mkdir($dataDir, 0777, true);
+    }
+
+    // subscriptions.jsonが存在しない場合は作成
+    if (!file_exists($config['subscriptions_file'])) {
+        file_put_contents($config['subscriptions_file'], json_encode([], JSON_PRETTY_PRINT));
+        chmod($config['subscriptions_file'], 0666);
+    }
+
     // リクエストボディ取得
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);

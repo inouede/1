@@ -51,7 +51,11 @@ git clone <repository-url> .
 composer install
 ```
 
-## ステップ2: パーミッションの設定
+## ステップ2: パーミッションの設定（オプション）
+
+**注意**: `data` ディレクトリと `data/subscriptions.json` ファイルは、初回アクセス時に自動的に作成されます。手動で作成する必要はありません。
+
+ただし、パーミッションエラーが発生する場合は、以下の設定を行ってください：
 
 ### FTPの場合
 
@@ -61,6 +65,18 @@ composer install
 ### SSHの場合
 
 ```bash
+# dataディレクトリが存在する場合
+chmod 777 data
+
+# subscriptions.jsonが存在する場合
+chmod 666 data/subscriptions.json
+```
+
+### 手動でディレクトリとファイルを作成する場合
+
+```bash
+mkdir -p data
+echo '[]' > data/subscriptions.json
 chmod 777 data
 chmod 666 data/subscriptions.json
 ```
