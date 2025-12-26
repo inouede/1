@@ -161,6 +161,9 @@ async function subscribeToPush() {
 // サブスクリプションをサーバーに送信
 async function sendSubscriptionToServer(subscription) {
   try {
+    console.log('Sending subscription to server:', API_ENDPOINTS.subscribe);
+    console.log('Subscription data:', subscription.toJSON());
+
     const response = await fetch(API_ENDPOINTS.subscribe, {
       method: 'POST',
       headers: {
@@ -171,15 +174,27 @@ async function sendSubscriptionToServer(subscription) {
       })
     });
 
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server error:', errorText);
+      throw new Error(`Server returned ${response.status}: ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('Server response:', data);
 
     if (data.success) {
-      console.log('Subscription saved successfully:', data);
+      console.log('✅ Subscription saved successfully:', data);
+      showToast(`✅ デバイスを登録しました (合計: ${data.total_subscriptions}台)`);
     } else {
-      console.error('Failed to save subscription:', data.error);
+      console.error('❌ Failed to save subscription:', data.error);
+      showToast('❌ デバイス登録に失敗しました');
     }
   } catch (error) {
-    console.error('Error sending subscription to server:', error);
+    console.error('❌ Error sending subscription to server:', error);
+    showToast('❌ サーバーとの通信に失敗しました');
   }
 }
 
@@ -217,6 +232,9 @@ async function sendNotification() {
   sendBtn.textContent = '送信中...';
 
   try {
+    console.log('Sending push notification to:', API_ENDPOINTS.sendPush);
+    console.log('Message:', message);
+
     // バックエンドAPIにメッセージを送信
     const response = await fetch(API_ENDPOINTS.sendPush, {
       method: 'POST',
@@ -228,10 +246,19 @@ async function sendNotification() {
       })
     });
 
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server error:', errorText);
+      throw new Error(`Server returned ${response.status}: ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('Server response:', data);
 
     if (data.success) {
-      console.log('Push notification sent:', data);
+      console.log('✅ Push notification sent:', data);
 
       // メッセージ履歴に追加
       addToHistory(message);
@@ -247,8 +274,8 @@ async function sendNotification() {
     }
 
   } catch (error) {
-    console.error('Error sending notification:', error);
-    showToast('❌ 通知の送信に失敗しました');
+    console.error('❌ Error sending notification:', error);
+    showToast('❌ 通知の送信に失敗しました: ' + error.message);
   } finally {
     // 送信ボタンを有効化
     sendBtn.disabled = messageInput.value.length === 0;
