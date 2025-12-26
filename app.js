@@ -23,7 +23,7 @@ async function initApp() {
   // Service Worker登録
   if ('serviceWorker' in navigator) {
     try {
-      swRegistration = await navigator.serviceWorker.register('/sw.js');
+      swRegistration = await navigator.serviceWorker.register('./sw.js');
       console.log('Service Worker registered successfully:', swRegistration);
     } catch (error) {
       console.error('Service Worker registration failed:', error);
@@ -132,8 +132,8 @@ async function sendNotification() {
       // Service Workerを通じて通知を表示
       await swRegistration.showNotification('📨 新しいメッセージ', {
         body: message,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
         vibrate: [200, 100, 200],
         tag: 'message-notification',
         requireInteraction: false,
@@ -147,7 +147,7 @@ async function sendNotification() {
       // フォールバック: 通常の通知
       new Notification('📨 新しいメッセージ', {
         body: message,
-        icon: '/icon-192.png',
+        icon: './icon-192.png',
         vibrate: [200, 100, 200]
       });
     }

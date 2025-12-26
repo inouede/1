@@ -1,11 +1,11 @@
 const CACHE_NAME = 'pwa-push-notification-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Service Workerのインストール
@@ -55,8 +55,8 @@ self.addEventListener('push', (event) => {
   let notificationData = {
     title: 'プッシュ通知',
     body: '新しいメッセージがあります',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
     vibrate: [200, 100, 200],
     tag: 'notification-tag',
     requireInteraction: false
@@ -90,6 +90,6 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   event.waitUntil(
-    clients.openWindow('/')
+    clients.openWindow('./')
   );
 });
