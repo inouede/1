@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="プッシュ通知を送信できるPWAアプリ">
+  <meta name="theme-color" content="#2196F3">
+  <title>プッシュ通知アプリ</title>
+
+  <!-- PWA マニフェスト -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- アイコン -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- スタイルシート -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📱 プッシュ通知アプリ</h1>
+      <p class="subtitle">文章を入力して送信ボタンを押すと通知が届きます</p>
+    </header>
+
+    <main>
+      <!-- 通知許可ステータス -->
+      <div id="notification-status" class="status-card">
+        <div class="status-indicator" id="status-indicator">
+          <span class="status-icon">⚠️</span>
+          <span id="status-text">通知の許可を確認中...</span>
+        </div>
+        <button id="request-permission-btn" class="btn btn-secondary" style="display: none;">
+          通知を許可する
+        </button>
+      </div>
+
+      <!-- メッセージ入力フォーム -->
+      <div class="form-card">
+        <label for="message-input">メッセージを入力してください</label>
+        <textarea
+          id="message-input"
+          rows="4"
+          placeholder="ここにメッセージを入力..."
+          maxlength="500"
+        ></textarea>
+        <div class="char-count">
+          <span id="char-count">0</span> / 500
+        </div>
+        <button id="send-btn" class="btn btn-primary" disabled>
+          送信して通知を受け取る
+        </button>
+      </div>
+
+      <!-- PWAインストールボタン -->
+      <div id="install-prompt" class="install-card" style="display: none;">
+        <p>📲 このアプリをホーム画面に追加できます</p>
+        <button id="install-btn" class="btn btn-install">
+          アプリをインストール
+        </button>
+      </div>
+
+      <!-- メッセージ履歴 -->
+      <div class="history-card">
+        <h2>送信履歴</h2>
+        <div id="message-history" class="message-list">
+          <p class="empty-state">まだメッセージがありません</p>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>PWA プッシュ通知デモアプリ</p>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="/app.js"></script>
+</body>
+</html>
