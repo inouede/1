@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-push-notification-v2';
+const CACHE_NAME = 'pwa-push-notification-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -70,7 +70,8 @@ self.addEventListener('fetch', (event) => {
 
 // プッシュ通知の受信
 self.addEventListener('push', (event) => {
-  console.log('Service Worker: Push notification received');
+  console.log('🔔 Service Worker: Push notification received');
+  console.log('📦 Push event data:', event.data ? event.data.text() : 'No data');
 
   let notificationData = {
     title: 'プッシュ通知',
@@ -86,22 +87,30 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       const data = event.data.json();
+      console.log('📄 Parsed JSON data:', data);
       notificationData = { ...notificationData, ...data };
     } catch (e) {
+      console.log('⚠️ Not JSON, using text:', event.data.text());
       notificationData.body = event.data.text();
     }
   }
 
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      vibrate: notificationData.vibrate,
-      tag: notificationData.tag,
-      requireInteraction: notificationData.requireInteraction
-    })
-  );
+  console.log('📢 Showing notification with data:', notificationData);
+
+  const notificationPromise = self.registration.showNotification(notificationData.title, {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
+    vibrate: notificationData.vibrate,
+    tag: notificationData.tag,
+    requireInteraction: notificationData.requireInteraction
+  }).then(() => {
+    console.log('✅ Notification displayed successfully');
+  }).catch((error) => {
+    console.error('❌ Failed to show notification:', error);
+  });
+
+  event.waitUntil(notificationPromise);
 });
 
 // 通知クリック時のイベント
