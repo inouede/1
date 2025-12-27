@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-push-notification-v3';
+const CACHE_NAME = 'pwa-push-notification-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,6 +7,50 @@ const urlsToCache = [
   './icon-192.png',
   './icon-512.png'
 ];
+
+// IndexedDB設定
+const DB_NAME = 'PushNotificationDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'messages';
+
+// IndexedDBを開く
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+        objectStore.createIndex('type', 'type', { unique: false });
+      }
+    };
+  });
+}
+
+// メッセージを保存
+async function saveMessage(message, type) {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    const messageData = {
+      message: message,
+      type: type, // 'sent' or 'received'
+      timestamp: new Date().toISOString()
+    };
+
+    await store.add(messageData);
+    console.log('💾 Message saved to IndexedDB:', messageData);
+  } catch (error) {
+    console.error('❌ Failed to save message to IndexedDB:', error);
+  }
+}
 
 // Service Workerのインストール
 self.addEventListener('install', (event) => {
@@ -83,19 +127,26 @@ self.addEventListener('push', (event) => {
     requireInteraction: false
   };
 
+  let messageText = '新しいメッセージがあります';
+
   // プッシュデータがある場合は使用
   if (event.data) {
     try {
       const data = event.data.json();
       console.log('📄 Parsed JSON data:', data);
       notificationData = { ...notificationData, ...data };
+      messageText = data.body || messageText;
     } catch (e) {
       console.log('⚠️ Not JSON, using text:', event.data.text());
-      notificationData.body = event.data.text();
+      messageText = event.data.text();
+      notificationData.body = messageText;
     }
   }
 
   console.log('📢 Showing notification with data:', notificationData);
+
+  // 受信メッセージをIndexedDBに保存
+  const savePromise = saveMessage(messageText, 'received');
 
   const notificationPromise = self.registration.showNotification(notificationData.title, {
     body: notificationData.body,
@@ -110,7 +161,7 @@ self.addEventListener('push', (event) => {
     console.error('❌ Failed to show notification:', error);
   });
 
-  event.waitUntil(notificationPromise);
+  event.waitUntil(Promise.all([notificationPromise, savePromise]));
 });
 
 // 通知クリック時のイベント

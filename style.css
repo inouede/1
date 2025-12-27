@@ -230,15 +230,38 @@ textarea:focus {
   background-color: #f9f9f9;
   border-radius: 8px;
   border-left: 4px solid var(--primary-color);
+  transition: all 0.2s ease;
+}
+
+.message-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.message-sent {
+  background-color: #e3f2fd;
+  border-left-color: #2196F3;
+}
+
+.message-received {
+  background-color: #f1f8e9;
+  border-left-color: #4CAF50;
+}
+
+.message-type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  opacity: 0.8;
 }
 
 .message-content {
   margin-bottom: 8px;
   word-wrap: break-word;
+  font-size: 0.95rem;
 }
 
 .message-time {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-light);
 }
 

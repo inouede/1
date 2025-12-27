@@ -23,6 +23,11 @@ const API_ENDPOINTS = {
   sendPush: './api/send-push.php'
 };
 
+// IndexedDB設定
+const DB_NAME = 'PushNotificationDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'messages';
+
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
@@ -53,8 +58,18 @@ async function initApp() {
   // PWAインストールプロンプト設定
   setupInstallPrompt();
 
-  // 履歴をローカルストレージから読み込み
-  loadMessageHistory();
+  // 履歴をIndexedDBから読み込み
+  await loadMessageHistory();
+
+  // 定期的に履歴を更新（受信通知を反映）
+  setInterval(async () => {
+    await loadMessageHistory();
+  }, 5000); // 5秒ごと
+
+  // ページがフォーカスされたときに履歴を更新
+  window.addEventListener('focus', async () => {
+    await loadMessageHistory();
+  });
 }
 
 // イベントリスナー設定
@@ -352,27 +367,88 @@ function addToHistory(message) {
   // 最新10件のみ保持
   history = history.slice(0, 10);
 
-  // ローカルストレージに保存
-  localStorage.setItem('messageHistory', JSON.stringify(history));
+  // IndexedDBに保存（送信履歴として）
+  await saveMessageToDB(message, 'sent');
 
   // 表示更新
-  renderMessageHistory(history);
+  await loadMessageHistory();
+}
+
+// IndexedDBを開く
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+        objectStore.createIndex('type', 'type', { unique: false });
+      }
+    };
+  });
+}
+
+// メッセージをIndexedDBに保存
+async function saveMessageToDB(message, type) {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    const messageData = {
+      message: message,
+      type: type, // 'sent' or 'received'
+      timestamp: new Date().toISOString()
+    };
+
+    await store.add(messageData);
+    console.log('💾 Message saved to IndexedDB:', messageData);
+  } catch (error) {
+    console.error('❌ Failed to save message to IndexedDB:', error);
+  }
+}
+
+// IndexedDBからメッセージ履歴を読み込み
+async function getMessagesFromDB() {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.getAll();
+
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('❌ Failed to load messages from IndexedDB:', error);
+    return [];
+  }
 }
 
 // メッセージ履歴読み込み
-function loadMessageHistory() {
-  const history = JSON.parse(localStorage.getItem('messageHistory') || '[]');
-  renderMessageHistory(history);
+async function loadMessageHistory() {
+  const messages = await getMessagesFromDB();
+
+  // タイムスタンプ順にソート（新しい順）
+  messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  renderMessageHistory(messages);
 }
 
 // メッセージ履歴表示
-function renderMessageHistory(history) {
-  if (history.length === 0) {
+function renderMessageHistory(messages) {
+  if (messages.length === 0) {
     messageHistory.innerHTML = '<p class="empty-state">まだメッセージがありません</p>';
     return;
   }
 
-  messageHistory.innerHTML = history.map(item => {
+  messageHistory.innerHTML = messages.map(item => {
     const date = new Date(item.timestamp);
     const formattedDate = date.toLocaleString('ja-JP', {
       month: 'short',
@@ -381,8 +457,12 @@ function renderMessageHistory(history) {
       minute: '2-digit'
     });
 
+    const typeLabel = item.type === 'sent' ? '📤 送信' : '📥 受信';
+    const typeClass = item.type === 'sent' ? 'message-sent' : 'message-received';
+
     return `
-      <div class="message-item">
+      <div class="message-item ${typeClass}">
+        <div class="message-type">${typeLabel}</div>
         <div class="message-content">${escapeHtml(item.message)}</div>
         <div class="message-time">${formattedDate}</div>
       </div>

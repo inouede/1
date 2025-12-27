@@ -16,6 +16,6 @@ return [
 
     // デフォルト通知設定
     'notification' => [
-        'ttl' => 3600, // Time to live (秒)
+        'ttl' => 2419200, // Time to live (秒) - 4週間
     ],
 ];
