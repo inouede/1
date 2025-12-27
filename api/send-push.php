@@ -137,7 +137,9 @@ try {
 
     // 結果を処理
     $index = 0;
+    $totalSent = 0;
     foreach ($results as $result) {
+        $totalSent++;
         if ($result->isSuccess()) {
             $successCount++;
         } else {
@@ -171,7 +173,7 @@ try {
         'success' => true,
         'message' => 'Push notifications sent',
         'stats' => [
-            'total' => count($results),
+            'total' => $totalSent,
             'success' => $successCount,
             'failed' => $failedCount,
             'expired' => count($expiredSubscriptions)
