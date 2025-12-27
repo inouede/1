@@ -5,6 +5,7 @@ const charCount = document.getElementById('char-count');
 const statusIndicator = document.getElementById('status-indicator');
 const statusText = document.getElementById('status-text');
 const requestPermissionBtn = document.getElementById('request-permission-btn');
+const resubscribeBtn = document.getElementById('resubscribe-btn');
 const installPrompt = document.getElementById('install-prompt');
 const installBtn = document.getElementById('install-btn');
 const messageHistory = document.getElementById('message-history');
@@ -71,6 +72,9 @@ function setupEventListeners() {
   // 通知許可ボタン
   requestPermissionBtn.addEventListener('click', requestNotificationPermission);
 
+  // 再登録ボタン
+  resubscribeBtn.addEventListener('click', resubscribeToPush);
+
   // インストールボタン
   installBtn.addEventListener('click', installApp);
 }
@@ -89,6 +93,7 @@ function checkNotificationPermission() {
       updateStatus('success', '✅ 通知が許可されています');
       sendBtn.disabled = messageInput.value.length === 0;
       requestPermissionBtn.style.display = 'none';
+      resubscribeBtn.style.display = 'block';
       // プッシュサブスクリプションを登録
       subscribeToPush();
       break;
@@ -96,12 +101,14 @@ function checkNotificationPermission() {
     case 'denied':
       updateStatus('error', '❌ 通知が拒否されています（ブラウザ設定から許可してください）');
       requestPermissionBtn.style.display = 'none';
+      resubscribeBtn.style.display = 'none';
       sendBtn.disabled = true;
       break;
 
     case 'default':
       updateStatus('warning', '⚠️ 通知の許可が必要です');
       requestPermissionBtn.style.display = 'block';
+      resubscribeBtn.style.display = 'none';
       sendBtn.disabled = true;
       break;
   }
@@ -163,6 +170,46 @@ async function subscribeToPush() {
 
   } catch (error) {
     console.error('Failed to subscribe to push:', error);
+  }
+}
+
+// プッシュサブスクリプション再登録
+async function resubscribeToPush() {
+  if (!('serviceWorker' in navigator)) {
+    console.error('Service Worker not supported');
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    // 既存のサブスクリプションを削除
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('🗑️ Unsubscribing from existing push subscription...');
+      await existingSubscription.unsubscribe();
+      console.log('✅ Successfully unsubscribed');
+      showToast('🗑️ 既存の登録を解除しました');
+    }
+
+    // 新しいサブスクリプションを作成
+    console.log('🔄 Creating new push subscription...');
+    const vapidPublicKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+    const newSubscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidPublicKey
+    });
+
+    console.log('✅ New push subscription created:', newSubscription);
+
+    // サーバーに送信
+    await sendSubscriptionToServer(newSubscription);
+
+    showToast('✅ プッシュ通知を再登録しました');
+
+  } catch (error) {
+    console.error('❌ Failed to resubscribe to push:', error);
+    showToast('❌ 再登録に失敗しました');
   }
 }
 
