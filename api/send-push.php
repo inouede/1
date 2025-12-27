@@ -138,20 +138,39 @@ try {
     // 結果を処理
     $index = 0;
     $totalSent = 0;
+    $results_details = [];
+
     foreach ($results as $result) {
         $totalSent++;
+        $endpoint = isset($subscriptions[$index]) ? substr($subscriptions[$index]['endpoint'], -20) : 'unknown';
+
         if ($result->isSuccess()) {
             $successCount++;
+            error_log("Push success to endpoint: ..." . $endpoint);
+            $results_details[] = [
+                'endpoint_suffix' => $endpoint,
+                'status' => 'success'
+            ];
         } else {
             $failedCount++;
+            $statusCode = $result->getResponse() ? $result->getResponse()->getStatusCode() : 'no-response';
+            $reason = $result->getReason();
+
+            error_log("Push failed to endpoint: ..." . $endpoint . " | Status: " . $statusCode . " | Reason: " . $reason);
+
+            $results_details[] = [
+                'endpoint_suffix' => $endpoint,
+                'status' => 'failed',
+                'status_code' => $statusCode,
+                'reason' => $reason
+            ];
 
             // 410 Gone または 404 Not Found の場合、サブスクリプションを削除
             if ($result->getResponse() &&
                 in_array($result->getResponse()->getStatusCode(), [404, 410])) {
                 $expiredSubscriptions[] = $index;
+                error_log("Subscription expired, will be removed: ..." . $endpoint);
             }
-
-            error_log("Push failed: " . $result->getReason());
         }
         $index++;
     }
@@ -177,7 +196,9 @@ try {
             'success' => $successCount,
             'failed' => $failedCount,
             'expired' => count($expiredSubscriptions)
-        ]
+        ],
+        'details' => $results_details,
+        'remaining_subscriptions' => count($subscriptions)
     ]);
 
 } catch (Exception $e) {
