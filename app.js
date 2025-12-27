@@ -34,6 +34,10 @@ async function initApp() {
     try {
       swRegistration = await navigator.serviceWorker.register('./sw.js');
       console.log('Service Worker registered successfully:', swRegistration);
+
+      // Service Workerがアクティブになるのを待つ
+      await navigator.serviceWorker.ready;
+      console.log('Service Worker is ready and active');
     } catch (error) {
       console.error('Service Worker registration failed:', error);
     }
@@ -128,26 +132,30 @@ async function requestNotificationPermission() {
 
 // プッシュサブスクリプション登録
 async function subscribeToPush() {
-  if (!swRegistration) {
-    console.error('Service Worker not registered');
+  if (!('serviceWorker' in navigator)) {
+    console.error('Service Worker not supported');
     return;
   }
 
   try {
+    // Service Workerがアクティブになるのを待つ
+    const registration = await navigator.serviceWorker.ready;
+    console.log('Attempting to subscribe to push notifications...');
+
     // 既存のサブスクリプションを確認
-    let subscription = await swRegistration.pushManager.getSubscription();
+    let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
       // 新規サブスクリプション作成
       const vapidPublicKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-      subscription = await swRegistration.pushManager.subscribe({
+      subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: vapidPublicKey
       });
 
-      console.log('Push subscription created:', subscription);
+      console.log('✅ Push subscription created:', subscription);
     } else {
-      console.log('Push subscription already exists:', subscription);
+      console.log('ℹ️ Push subscription already exists:', subscription);
     }
 
     // サーバーに送信
