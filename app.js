@@ -394,10 +394,20 @@ async function saveMessageToDB(message, type) {
       timestamp: new Date().toISOString()
     };
 
-    await store.add(messageData);
-    console.log('💾 Message saved to IndexedDB:', messageData);
+    return new Promise((resolve, reject) => {
+      const request = store.add(messageData);
+      request.onsuccess = () => {
+        console.log('💾 Message saved to IndexedDB:', messageData);
+        resolve();
+      };
+      request.onerror = () => {
+        console.error('❌ Failed to save message to IndexedDB:', request.error);
+        reject(request.error);
+      };
+    });
   } catch (error) {
-    console.error('❌ Failed to save message to IndexedDB:', error);
+    console.error('❌ Failed to open IndexedDB:', error);
+    throw error;
   }
 }
 
