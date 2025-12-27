@@ -3,15 +3,30 @@
  * プッシュ通知送信API
  */
 
-require __DIR__ . '/../vendor/autoload.php';
-
-use Minishlink\WebPush\WebPush;
-use Minishlink\WebPush\Subscription;
+// エラー出力を抑制（JSONのみ返す）
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+
+// autoloadチェック
+if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Composer dependencies not installed. Run: composer install'
+    ]);
+    exit;
+}
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Minishlink\WebPush\WebPush;
+use Minishlink\WebPush\Subscription;
 
 // OPTIONSリクエスト（プリフライト）に対応
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -26,10 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// 設定ファイル読み込み
-$config = require __DIR__ . '/../config.php';
-
 try {
+    // 設定ファイル読み込み
+    if (!file_exists(__DIR__ . '/../config.php')) {
+        throw new Exception('Configuration file not found');
+    }
+
+    $config = require __DIR__ . '/../config.php';
+
+    if (!isset($config['vapid']) || !isset($config['subscriptions_file'])) {
+        throw new Exception('Invalid configuration file');
+    }
     // dataディレクトリが存在しない場合は作成
     $dataDir = dirname($config['subscriptions_file']);
     if (!is_dir($dataDir)) {
@@ -157,9 +179,24 @@ try {
     ]);
 
 } catch (Exception $e) {
+    error_log('Push notification error: ' . $e->getMessage());
+    error_log('Stack trace: ' . $e->getTraceAsString());
+
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
+    ]);
+} catch (Throwable $e) {
+    error_log('Fatal error in push notification: ' . $e->getMessage());
+    error_log('Stack trace: ' . $e->getTraceAsString());
+
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Internal server error: ' . $e->getMessage(),
+        'type' => get_class($e)
     ]);
 }

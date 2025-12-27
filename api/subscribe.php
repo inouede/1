@@ -3,6 +3,11 @@
  * プッシュ通知サブスクリプション登録API
  */
 
+// エラー出力を抑制（JSONのみ返す）
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -94,9 +99,24 @@ try {
     ]);
 
 } catch (Exception $e) {
+    error_log('Subscription error: ' . $e->getMessage());
+    error_log('Stack trace: ' . $e->getTraceAsString());
+
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
+    ]);
+} catch (Throwable $e) {
+    error_log('Fatal error in subscription: ' . $e->getMessage());
+    error_log('Stack trace: ' . $e->getTraceAsString());
+
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Internal server error: ' . $e->getMessage(),
+        'type' => get_class($e)
     ]);
 }
