@@ -331,7 +331,7 @@ async function sendNotification() {
       console.log('✅ Push notification sent:', data);
 
       // メッセージ履歴に追加
-      addToHistory(message);
+      await addToHistory(message);
 
       // 入力フィールドをクリア
       messageInput.value = '';
@@ -354,19 +354,7 @@ async function sendNotification() {
 }
 
 // メッセージ履歴に追加
-function addToHistory(message) {
-  // ローカルストレージから履歴取得
-  let history = JSON.parse(localStorage.getItem('messageHistory') || '[]');
-
-  // 新しいメッセージを追加
-  history.unshift({
-    message: message,
-    timestamp: new Date().toISOString()
-  });
-
-  // 最新10件のみ保持
-  history = history.slice(0, 10);
-
+async function addToHistory(message) {
   // IndexedDBに保存（送信履歴として）
   await saveMessageToDB(message, 'sent');
 
