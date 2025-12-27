@@ -330,9 +330,6 @@ async function sendNotification() {
     if (data.success) {
       console.log('✅ Push notification sent:', data);
 
-      // メッセージ履歴に追加
-      await addToHistory(message);
-
       // 入力フィールドをクリア
       messageInput.value = '';
       charCount.textContent = '0';
@@ -455,12 +452,8 @@ function renderMessageHistory(messages) {
       minute: '2-digit'
     });
 
-    const typeLabel = item.type === 'sent' ? '📤 送信' : '📥 受信';
-    const typeClass = item.type === 'sent' ? 'message-sent' : 'message-received';
-
     return `
-      <div class="message-item ${typeClass}">
-        <div class="message-type">${typeLabel}</div>
+      <div class="message-item">
         <div class="message-content">${escapeHtml(item.message)}</div>
         <div class="message-time">${formattedDate}</div>
       </div>
