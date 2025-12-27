@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-push-notification-v1';
+const CACHE_NAME = 'pwa-push-notification-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -40,12 +40,32 @@ self.addEventListener('activate', (event) => {
 
 // フェッチイベント
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        return response || fetch(event.request);
-      })
-  );
+  // .js, .css ファイルはネットワーク優先（キャッシュ更新のため）
+  if (event.request.url.endsWith('.js') || event.request.url.endsWith('.css')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // 成功したらキャッシュも更新
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // ネットワークエラー時はキャッシュを使用
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // その他のファイルはキャッシュ優先
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => {
+          return response || fetch(event.request);
+        })
+    );
+  }
 });
 
 // プッシュ通知の受信
