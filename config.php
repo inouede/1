@@ -6,7 +6,7 @@
 return [
     // VAPIDキー
     'vapid' => [
-        'subject' => 'mailto:your-email@example.com', // ← あなたのメールアドレスに変更してください
+        'subject' => 'mailto:u-akamatsu@inoue-de.com',
         'publicKey' => 'BNF2KP-UyNhY4w7khRCa7G-vkRoHHFOpzklLfnM-VXnjKe3rVt0iyK2WLFJTv3MKf9UNZn-tx5lrGWCPrsKLK0I',
         'privateKey' => '4H3SEmzhpzaIX3ELlISahB9JnjpjacWJo9EQY6a1mAE',
     ],
